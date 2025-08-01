@@ -1,185 +1,159 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { createSwapy, utils } from 'swapy';
-import SectionRenderer from '../components/SectionRenderer';
-import SectionEditor from '../components/SectionEditor';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  ChevronLeft,
+  Layers,
+  Brush,
+  Plus,
+  GripVertical,
+  ArrowUp,
+  ArrowDown,
+  Copy,
+  Pencil,
+  Trash,
+} from "lucide-react";
 
-// Definiere alle verfügbaren Abschnittstypen und deren Standard‑Eigenschaften
-const availableSections = {
-  hero: {
-    name: 'Hero',
-    defaultProps: {
-      title: 'Willkommen zu unserem Produkt',
-      subtitle: 'Hier steht eine kurze Beschreibung.',
-    },
-  },
-  text: {
-    name: 'Text',
-    defaultProps: {
-      heading: 'Über uns',
-      content:
-        'Dieser Textabschnitt kann genutzt werden, um Ihre Dienstleistung, Ihr Produkt oder Ihre Vision ausführlicher zu beschreiben. Passen Sie den Text nach Belieben an.',
-    },
-  },
-  features: {
-    name: 'Features',
-    defaultProps: {
-      heading: 'Unsere Features',
-      features: [
-        { title: 'Schnell', description: 'Kurze Ladezeiten dank modernster Technik.' },
-        { title: 'Einfach', description: 'Intuitive Bedienung ohne Schnickschnack.' },
-        { title: 'Flexibel', description: 'Passen Sie alles so an, wie Sie es benötigen.' },
-      ],
-    },
-  },
-  cta: {
-    name: 'Call to Action',
-    defaultProps: {
-      heading: 'Bereit, loszulegen?',
-      text: 'Klicken Sie auf den Button, um Ihr Projekt zu starten.',
-      buttonText: 'Jetzt starten',
-      buttonLink: '#',
-    },
-  },
-};
-
-// Hilfsfunktion zur Generierung einer eindeutigen ID
-function generateId() {
-  return '_' + Math.random().toString(36).substr(2, 9);
-}
-
+/**
+ * BuilderPage – UI‑Gerüst entsprechend des Referenz‑Screenshots
+ *
+ * ‑ zweispaltiges Layout (Sidebar + Canvas)
+ * ‑ Sidebar mit Tabs „Layers / Styles“ und einer Section‑Liste
+ * ‑ Haupt‑Canvas mit ausgewähltem Abschnitt samt Toolbar
+ *
+ * Funktionale Drag‑and‑Drop‑Logik (Swapy / dnd‑Kit) *kann* später ergänzt werden –
+ * dieses Gerüst fokussiert auf die Optik.
+ */
 export default function BuilderPage() {
-  // Liste der hinzugefügten Abschnitte
-  const [sections, setSections] = useState([]);
-  // Mapping zwischen Slots und Item‑IDs, wird von Swapy verwaltet
-  const [slotItemMap, setSlotItemMap] = useState(utils.initSlotItemMap([], 'id'));
-  // Aktuell ausgewählter Abschnitt
-  const [selectedSectionId, setSelectedSectionId] = useState(null);
-
-  const containerRef = useRef(null);
-  const swapyRef = useRef(null);
-
-  // Swapy initialisieren
-  useEffect(() => {
-    if (containerRef.current) {
-      // `manualSwap` aktivieren, um die Reaktion auf dynamische Änderungen an die App zu delegieren
-      swapyRef.current = createSwapy(containerRef.current, { manualSwap: true });
-      swapyRef.current.onSwap((event) => {
-        // Neue Reihenfolge speichern
-        setSlotItemMap(event.newSlotItemMap.asArray);
-      });
-    }
-    return () => {
-      swapyRef.current?.destroy();
-    };
-  }, []);
-
-  // Aktualisiere Swapy, wenn Abschnitte hinzugefügt oder entfernt werden
-  useEffect(() => {
-    if (swapyRef.current) {
-      utils.dynamicSwapy(swapyRef.current, sections, 'id', slotItemMap, setSlotItemMap);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sections]);
-
-  // Berechne die Reihenfolge der Abschnitte basierend auf SlotItemMap
-  const slottedSections = useMemo(() => {
-    return utils.toSlottedItems(sections, 'id', slotItemMap);
-  }, [sections, slotItemMap]);
-
-  // Abschnitt hinzufügen
-  const addSection = (type) => {
-    const id = generateId();
-    const newSection = {
-      id,
-      type,
-      props: JSON.parse(JSON.stringify(availableSections[type].defaultProps)),
-    };
-    setSections((prev) => [...prev, newSection]);
-    setSelectedSectionId(id);
-  };
-
-  // Abschnitt entfernen
-  const removeSection = (id) => {
-    setSections((prev) => prev.filter((s) => s.id !== id));
-    if (selectedSectionId === id) {
-      setSelectedSectionId(null);
-    }
-  };
-
-  // Abschnitt updaten
-  const updateSectionProps = (id, newProps) => {
-    setSections((prev) => prev.map((s) => (s.id === id ? { ...s, props: newProps } : s)));
-  };
-
-  // Ausgewählter Abschnitt (Objekt) für Editor
-  const selectedSection = sections.find((s) => s.id === selectedSectionId);
+  const [tab, setTab] = useState("layers");
+  const [sections, setSections] = useState([
+    "Hero image",
+    "Video",
+    "Featured",
+    "Glassdoor rating",
+    "Benefits",
+    "Photo grid",
+    "Jobs wall",
+  ]);
+  const [selected, setSelected] = useState(0);
 
   return (
-    <div style={{ display: 'flex', height: '100vh', fontFamily: 'sans-serif' }}>
-      {/* Seitenleiste: Palette */}
-      <aside
-        style={{
-          width: '220px',
-          borderRight: '1px solid #e5e7eb',
-          padding: '1rem',
-          boxSizing: 'border-box',
-        }}
-      >
-        <h2 style={{ fontSize: '1.25rem', marginTop: 0 }}>Abschnitte</h2>
-        {Object.entries(availableSections).map(([key, meta]) => (
-          <button
-            key={key}
-            onClick={() => addSection(key)}
-            style={{
-              display: 'block',
-              width: '100%',
-              padding: '0.5rem',
-              marginBottom: '0.5rem',
-              border: '1px solid #d1d5db',
-              borderRadius: '4px',
-              backgroundColor: '#f9fafb',
-              cursor: 'pointer',
-              textAlign: 'left',
-            }}
-          >
-            {meta.name} hinzufügen
-          </button>
-        ))}
-      </aside>
-      {/* Hauptbereich: Canvas */}
-      <div style={{ flex: 1, padding: '1rem', overflowY: 'auto' }}>
-        <h1 style={{ fontSize: '1.5rem', marginTop: 0 }}>Seiten‑Editor</h1>
-        {sections.length === 0 && (
-          <div style={{ color: '#6b7280', fontStyle: 'italic', marginTop: '2rem' }}>
-            Noch keine Abschnitte hinzugefügt. Wähle einen Abschnitt aus der linken Leiste.
+    <div className="h-screen w-screen flex flex-col bg-muted/40 text-base">
+      {/* Top Bar */}
+      <header className="flex items-center justify-between px-4 py-2 border-b bg-background shadow-sm">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="font-medium">Career page builder</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground mr-3">Save draft</span>
+          <Button variant="outline">Preview</Button>
+          <Button>Publish</Button>
+        </div>
+      </header>
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar */}
+        <aside className="w-64 border-r bg-background overflow-y-auto">
+          {/* Tabs */}
+          <div className="flex border-b">
+            <button
+              onClick={() => setTab("layers")}
+              className={`flex-1 px-3 py-2 flex items-center gap-1 justify-center text-sm font-medium transition hover:bg-muted/40 ${
+                tab === "layers" ? "border-b-2 border-primary text-primary" : ""
+              }`}
+            >
+              <Layers className="h-4 w-4" /> Layers
+            </button>
+            <button
+              onClick={() => setTab("styles")}
+              className={`flex-1 px-3 py-2 flex items-center gap-1 justify-center text-sm font-medium transition hover:bg-muted/40 ${
+                tab === "styles" ? "border-b-2 border-primary text-primary" : ""
+              }`}
+            >
+              <Brush className="h-4 w-4" /> Styles
+            </button>
           </div>
-        )}
-        <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {slottedSections.map(({ slotId, itemId, item }) => (
-            <div key={slotId} data-swapy-slot={slotId}>
-              <div data-swapy-item={itemId}>
-                <SectionRenderer
-                  section={item}
-                  onSelect={() => setSelectedSectionId(item.id)}
-                  isSelected={selectedSectionId === item.id}
-                  onRemove={() => removeSection(item.id)}
-                />
+
+          {tab === "layers" && (
+            <div className="p-4 space-y-2">
+              <Button
+                variant="secondary"
+                className="w-full flex items-center gap-1"
+                onClick={() => setSections([...sections, `Section ${sections.length + 1}`])}
+              >
+                <Plus className="h-4 w-4" /> New section
+              </Button>
+
+              <div className="space-y-1">
+                {sections.map((sec, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => setSelected(idx)}
+                    className={`group flex items-center justify-between px-2 py-1 rounded border hover:bg-muted/40 cursor-pointer ${
+                      selected === idx ? "border-primary bg-muted" : "border-transparent"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 text-sm">
+                      <GripVertical className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
+                      {sec}
+                    </div>
+                    <Pencil className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
-        </div>
+          )}
+
+          {tab === "styles" && (
+            <div className="p-6 text-sm text-muted-foreground">Style controls …</div>
+          )}
+        </aside>
+
+        {/* Canvas */}
+        <main className="flex-1 overflow-y-auto p-10">
+          <Card className="mx-auto max-w-4xl border-dashed border-2 border-muted flex flex-col relative group">
+            {/* Toolbar */}
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2 hidden group-hover:flex gap-1">
+              <Button size="icon" variant="secondary">
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="secondary">
+                <Copy className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="secondary">
+                <Trash className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Move handles */}
+            <div className="absolute top-1/2 -left-4 -translate-y-1/2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition">
+              <Button size="icon" variant="secondary">
+                <ArrowUp className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="secondary">
+                <ArrowDown className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <CardContent className="grid grid-cols-2 gap-6 p-12 min-h-[260px] place-items-center bg-muted/20">
+              {/* Image placeholder */}
+              <div className="h-48 bg-muted rounded w-full" />
+
+              {/* Text placeholder */}
+              <div className="space-y-4">
+                <div className="h-4 w-40 bg-muted rounded" />
+                <div className="h-8 w-72 bg-muted rounded" />
+                <div className="h-8 w-64 bg-muted rounded" />
+                <Button>Explore Roles</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
       </div>
-      {/* Editor‑Seitenleiste */}
-      <aside style={{ width: '320px', borderLeft: '1px solid #e5e7eb', backgroundColor: '#fafafa' }}>
-        <SectionEditor
-          section={selectedSection}
-          onUpdate={(newProps) => {
-            if (selectedSection) {
-              updateSectionProps(selectedSection.id, newProps);
-            }
-          }}
-        />
-      </aside>
     </div>
   );
 }
